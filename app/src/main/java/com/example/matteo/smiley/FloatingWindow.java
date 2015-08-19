@@ -10,11 +10,13 @@ import android.animation.ValueAnimator;
 import android.animation.ValueAnimator.AnimatorUpdateListener;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.graphics.PixelFormat;
 import android.graphics.Point;
 import android.graphics.PointF;
 import android.hardware.Camera;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
@@ -27,13 +29,21 @@ import android.view.ScaleGestureDetector.SimpleOnScaleGestureListener;
 import android.view.View;
 import android.view.WindowManager;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 public class FloatingWindow implements View.OnTouchListener {
     private static final String TAG = "FloatingWindow";
     private static final boolean DEBUG = true;
 
     // TODO: this size works well on a Nexus 7... make this more generic later.
-    private static final int INITIAL_WIDTH = 200;
-    private static final int INITIAL_HEIGHT = 267;
+    private static final int  X_RED_FACTOR= 3;
+    private static final int Y_RED_FACTOR = 4;
+    public int default_x;
+    public int default_y;
+
 
     private static final float MIN_SCALE_FACTOR = 0.75f;
     private static final float MAX_SCALE_FACTOR = 3.0f;
@@ -82,7 +92,9 @@ public class FloatingWindow implements View.OnTouchListener {
         mContext = context;
         mWindowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         mWindowManager.getDefaultDisplay().getSize(mDisplaySize);
-        mWindowParams = createWindowParams(INITIAL_WIDTH, INITIAL_HEIGHT);
+        default_x = mDisplaySize.x/X_RED_FACTOR;
+        default_y = mDisplaySize.y/Y_RED_FACTOR;
+        mWindowParams = createWindowParams(default_x, default_y);
         mIsOnLeft = true;
 
         mGestureDetector = new GestureDetector(context, new GestureListener());
@@ -115,11 +127,10 @@ public class FloatingWindow implements View.OnTouchListener {
         params.type = WindowManager.LayoutParams.TYPE_SYSTEM_ALERT;
         params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                 | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
                 | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
                 | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
         params.format = PixelFormat.TRANSLUCENT;
-        params.gravity = Gravity.LEFT | Gravity.TOP;
+        params.gravity = Gravity.RIGHT | Gravity.CENTER;
         return params;
     }
 
@@ -214,31 +225,18 @@ public class FloatingWindow implements View.OnTouchListener {
     }
 
     private class GestureListener extends SimpleOnGestureListener {
-
-        @Override
-        public boolean onDoubleTap(MotionEvent event) {
-            // TODO: use the code below to launch the camera activity or take a
-            // picture?
-
-            // Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            // intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            // if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-            // Bundle options = ActivityOptions.makeScaleUpAnimation(mRootView, 0, 0,
-            // mRootView.getWidth(), mRootView.getHeight()).toBundle();
-            // mContext.startActivity(intent, options);
-            // } else {
-            // mContext.startActivity(intent);
-            // }
-
-            // Double tap closes the camera window for now. This is temporary... will
-            // figure out the correct gesture to use later.
-            hide();
-
-            return true;
-        }
-
         @Override
         public boolean onSingleTapConfirmed(MotionEvent event) {
+
+            mCamera.takePicture(shutterCallback, rawCallback,jpegCallback);
+            //mCamera.startPreview();
+
+            return true;
+
+        }
+
+        /*@Override
+        public boolean onDoubleTap(MotionEvent event) {
             int fromX = mWindowParams.x;
             int toX = mIsOnLeft ? 0 : mDisplaySize.x - mRootView.getWidth();
             snap(fromX, toX);
@@ -246,37 +244,131 @@ public class FloatingWindow implements View.OnTouchListener {
             mHandler.sendMessageDelayed(snapMsg, SLEEP_DELAY_MILLIS);
             return true;
         }
+        */
+
+        @Override
+        public void onLongPress(MotionEvent event){
+            hide();
+        }
+
+        // Handles when shutter open
+        Camera.ShutterCallback shutterCallback = new Camera.ShutterCallback()
+        {
+            public void onShutter()
+            {
+                //Just a call to get sound
+            }
+        };
+
+        /** Handles data for raw picture */
+        Camera.PictureCallback rawCallback = new Camera.PictureCallback()
+        {
+            @Override
+            public void onPictureTaken(byte[] data, Camera camera) {
+
+                if (data != null) {
+
+                    File pictureFileDir = mContext.getCacheDir();
+                    if (!pictureFileDir.exists() && !pictureFileDir.mkdirs()) {
+                        return;
+                    }
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyymmddhhmmss");
+                    String date = dateFormat.format(new Date());
+                    String photoFile = "PictureFront_" + "_" + date + ".jpg";
+                    String filename = pictureFileDir.getPath() + File.separator + photoFile;
+                    File mainPicture = new File(filename);
+
+                    try {
+                        FileOutputStream fos = new FileOutputStream(mainPicture);
+                        fos.write(data);
+                        fos.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                }
+                camera.startPreview();
+            }
+        };
+
+        /** Handles data for jpeg picture */
+        Camera.PictureCallback jpegCallback = new Camera.PictureCallback()
+        {
+            @Override
+            public void onPictureTaken(byte[] data, Camera camera) {
+
+                if (data != null) {
+
+                    File pictureFileDir = mContext.getCacheDir();
+                    if (!pictureFileDir.exists() && !pictureFileDir.mkdirs()) {
+                        return;
+                    }
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyymmddhhmmss");
+                    String date = dateFormat.format(new Date());
+                    String photoFile = "PictureFront_" + "_" + date + ".jpg";
+                    String filename = pictureFileDir.getPath() + File.separator + photoFile;
+                    File mainPicture = new File(filename);
+
+                    try {
+                        FileOutputStream fos = new FileOutputStream(mainPicture);
+                        fos.write(data);
+                        fos.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                    galleryAddPic(filename);
+
+                }
+                camera.startPreview();
+            }
+
+        };
+
+
     }
+    private Camera openFrontFacingCamera() {
+        int cameraCount = 0;
+        int camIdx;
+        Camera cam = null;
+        Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
+        cameraCount = Camera.getNumberOfCameras();
+        for (camIdx = 0; camIdx < cameraCount; camIdx++) {
+            Camera.getCameraInfo(camIdx, cameraInfo);
+            if (cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                try {
+                    cam = Camera.open(camIdx);
+                } catch (RuntimeException e) {
+                    e.printStackTrace();
+                }
+                break;
+            }
+        }
+        return cam;
+    }
+
+
+    private void galleryAddPic(String mCurrentPhotoPath) {
+        Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        File f = new File(mCurrentPhotoPath);
+        Uri contentUri = Uri.fromFile(f);
+        mediaScanIntent.setData(contentUri);
+        mContext.sendBroadcast(mediaScanIntent);
+    }
+
+
 
     private class ScaleListener extends SimpleOnScaleGestureListener {
         @Override
         public boolean onScale(ScaleGestureDetector detector) {
             mScaleFactor *= detector.getScaleFactor();
             mScaleFactor = Math.max(MIN_SCALE_FACTOR, Math.min(mScaleFactor, MAX_SCALE_FACTOR));
-            int newWidth = (int) (INITIAL_WIDTH * mScaleFactor);
-            int newHeight = (int) (INITIAL_HEIGHT * mScaleFactor);
+            int newWidth = (int) (default_x * mScaleFactor);
+            int newHeight = (int) (default_y * mScaleFactor);
             updateWindowSize(newWidth, newHeight);
             return true;
         }
     }
 
-    private Camera openFrontFacingCamera() {
-        int cameraCount = 0;
-        Camera cam = null;
-        Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
-        cameraCount = Camera.getNumberOfCameras();
-        for (int camIdx = 0; camIdx < cameraCount; camIdx++) {
-            Camera.getCameraInfo(camIdx, cameraInfo);
-            if (cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-                try {
-                    cam = Camera.open(camIdx);
-                } catch (RuntimeException e) {
-                    Log.e(TAG, "Camera failed to open: " + e.getLocalizedMessage());
-                }
-            }
-        }
-
-        return cam;
-    }
 
 }
