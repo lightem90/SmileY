@@ -325,7 +325,7 @@ public class FloatingWindow implements View.OnTouchListener {
 
 
 
-                    SmileyCreator sc = new SmileyCreator(mainPicture);
+                    SmileyCreator sc = new SmileyCreator(mContext.getApplicationContext(),mainPicture);
                     sc.elaborate();
 
                     //File smileY = sc.getSmileY();

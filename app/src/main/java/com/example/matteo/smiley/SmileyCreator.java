@@ -1,7 +1,6 @@
 package com.example.matteo.smiley;
 
 import android.content.Context;
-import android.content.res.AssetManager;
 
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfRect;
@@ -128,9 +127,9 @@ public class SmileyCreator {
 
 
             isF.close();
-            isF.close();
-            isF.close();
-            isF.close();
+            isE.close();
+            isM.close();
+            isN.close();
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();
