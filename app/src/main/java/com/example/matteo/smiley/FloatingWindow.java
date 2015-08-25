@@ -17,6 +17,7 @@ import android.graphics.Point;
 import android.graphics.PointF;
 import android.hardware.Camera;
 import android.net.Uri;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
@@ -248,7 +249,7 @@ public class FloatingWindow implements View.OnTouchListener {
 
         @Override
         public void onLongPress(MotionEvent event){
-            hide();
+            close();
         }
 
         // Handles when shutter open
@@ -286,8 +287,8 @@ public class FloatingWindow implements View.OnTouchListener {
                         e.printStackTrace();
                     }
 
+                    camera.startPreview();
                 }
-                camera.startPreview();
             }
         };
 
@@ -299,14 +300,17 @@ public class FloatingWindow implements View.OnTouchListener {
 
                 if (data != null) {
 
-                    File pictureFileDir = mContext.getCacheDir();
-                    if (!pictureFileDir.exists() && !pictureFileDir.mkdirs()) {
+                    File sdCard = Environment.getExternalStorageDirectory();
+                    File dir = new File (sdCard.getAbsolutePath() + "/com.Matteo.SmileY");
+
+
+                    if (!dir.exists() && !dir.mkdirs()) {
                         return;
                     }
                     SimpleDateFormat dateFormat = new SimpleDateFormat("yyyymmddhhmmss");
                     String date = dateFormat.format(new Date());
-                    String photoFile = "PictureFront_" + "_" + date + ".jpg";
-                    String filename = pictureFileDir.getPath() + File.separator + photoFile;
+                    String photoFile = "Smiley_" + "_" + date + ".jpg";
+                    String filename = dir.getPath() + File.separator + photoFile;
                     File mainPicture = new File(filename);
 
                     try {
@@ -317,10 +321,19 @@ public class FloatingWindow implements View.OnTouchListener {
                         e.printStackTrace();
                     }
 
-                    galleryAddPic(filename);
+                    //galleryAddPic(filename);
 
+
+
+                    SmileyCreator sc = new SmileyCreator(mainPicture);
+                    sc.elaborate();
+
+                    //File smileY = sc.getSmileY();
+
+
+                    camera.startPreview();
                 }
-                camera.startPreview();
+
             }
 
         };
@@ -370,5 +383,13 @@ public class FloatingWindow implements View.OnTouchListener {
         }
     }
 
+    public void close (){
+
+
+        mCamera.release();
+        mWindowManager.removeView(mRootView);
+
+
+    }
 
 }

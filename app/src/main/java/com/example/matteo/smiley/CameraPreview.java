@@ -6,6 +6,7 @@ package com.example.matteo.smiley;
 import java.io.IOException;
 
 import android.content.Context;
+import android.content.Intent;
 import android.hardware.Camera;
 import android.util.Log;
 import android.view.Surface;
@@ -78,6 +79,12 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     public void surfaceDestroyed(SurfaceHolder holder) {
         if (DEBUG) Log.i(TAG, "surfaceDestroyed(SurfaceHolder");
         // Take care of releasing the Camera preview in the floating window.
+        mCamera.stopPreview();
+        mCamera.setPreviewCallback(null);
+        mCamera.release();
+        mCamera = null;
+        mContext.stopService(new Intent(mContext,FloatingWindowService.class));
+
     }
 
     public static void setCameraDisplayOrientation(Context context, int cameraId, Camera camera) {
